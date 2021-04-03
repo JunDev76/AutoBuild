@@ -1,0 +1,6 @@
+name: AutoBuild
+main: CrossMinimalLife\AutoBuild
+version: 1.0.0
+author: JunKR
+api:
+  - 3.0.0
