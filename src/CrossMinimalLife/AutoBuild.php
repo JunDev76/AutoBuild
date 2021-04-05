@@ -25,6 +25,8 @@ namespace CrossMinimalLife;
 use JUNKR\form\ButtonForm;
 use JUNKR\form\ModalForm;
 use pocketmine\block\Block;
+use pocketmine\block\Door;
+use pocketmine\block\Stair;
 use pocketmine\command\Command;
 use pocketmine\command\CommandSender;
 use pocketmine\command\PluginCommand;
@@ -81,7 +83,7 @@ class AutoBuild extends PluginBase implements Listener{
     }
 
     public $oldblock = [];
-    
+
     public function buildon(Player $player, $name){
         $this->buildmode[$player->getName()] = $name;
         $this->getScheduler()->scheduleRepeatingTask(new class($player, $this) extends Task{
@@ -162,7 +164,7 @@ class AutoBuild extends PluginBase implements Listener{
                 $this->owner->canplace[$player->getName()] = true;
                 $oldblocks = [];
                 $blocks = [];
-                foreach($this->owner->db[$this->owner->buildmode[$this->player->getName()]] as $v => $block){
+                foreach($this->owner->db[$this->owner->buildmode[$player->getName()]] as $v => $block){
                     $v3 = explode(":", $v);
                     $x = intval($v3[0]);
                     $z = intval($v3[2]);
@@ -198,9 +200,7 @@ class AutoBuild extends PluginBase implements Listener{
 
                     if(($b = $player->level->getBlock($v3))->getId() !== 0){
                         if($b->isSolid()){
-                            $this->owner->canplace[$player->getName()] = false;
-                            $bid = 152;
-                            $bdm = 0;
+                            return;
                         }
                     }
 
@@ -209,6 +209,44 @@ class AutoBuild extends PluginBase implements Listener{
                     $block->y = intval($v3->y);
                     $block->z = intval($v3->z);
                     $block->level = $player->level;
+
+                    /* if($block instanceof Stair){
+                         $d = [
+                             360 => 3,
+                             270 => 2,
+                             180 => 1,
+                             90 => 0
+                         ];
+                         $faces = [
+                             0 => 0,
+                             1 => 2,
+                             2 => 1,
+                             3 => 3
+                         ];
+                         $facef = array_flip($faces);
+                         $md = false;
+                         if($bdm > 3){
+                             $md = true;
+                             $bdm -= 4;
+                         }
+
+                         $rbdm = $this->getStairRotation($d[$yaw], $facef[$bdm]);
+
+                         if($md){
+                             $rbdm += 4;
+                         }
+
+                         if($player->getDirection() === 3){
+                             $rbdm ++;
+                         }
+
+                         // $facef[$dm] => 예전
+                         // $d[$yaw] => 새거
+                         // 시스템 방향 => $d[$yaw]
+
+                         $block->setDamage($rbdm);
+                     }*/
+
                     $blocks[] = $block;
                 }
 
@@ -299,9 +337,67 @@ class AutoBuild extends PluginBase implements Listener{
         }
     }
 
+
+    public function getStairRotation ($dmg, $rotation) {
+        if($dmg > 3) { $ret = 4; $dmg -= 4; }
+        else $ret = 0;
+        switch($rotation) {
+            case 0:
+                return $dmg;
+            case 1:
+                switch($dmg) {
+                    case 0:
+                        return $ret+2;
+                    case 2:
+                        return $ret+1;
+                    case 1:
+                        return $ret+3;
+                    case 3:
+                        return $ret;
+                }
+            case 2:
+                switch($dmg) {
+                    case 0:
+                        return $ret+1;
+                    case 2:
+                        return $ret+3;
+                    case 1:
+                        return $ret;
+                    case 3:
+                        return $ret+2;
+                }
+            case 3:
+                switch($dmg) {
+                    case 0:
+                        return $ret+3;
+                    case 2:
+                        return $ret;
+                    case 1:
+                        return $ret+2;
+                    case 3:
+                        return $ret+1;
+                }
+            default:
+                return $dmg;
+        }
+    }
+
     public function move(PlayerMoveEvent $ev){
         $player = $ev->getPlayer();
+        $yaws = [0, 90, 180, 270, 360];
+        $ryaws = [360, 90, 180, 270, 360, 90, 180, 270];
+        $min = PHP_INT_MAX;
 
+        $target = round($player->yaw);
+
+        foreach($yaws as $key => $yawone){
+            $a = abs($yawone - $target);
+
+            if($min > $a){
+                $min = $a;
+                $yaw = $ryaws[$key + 2];
+            }
+        }
         if(!isset($this->buildmode[$player->getName()])){
             return;
         }
@@ -379,6 +475,44 @@ class AutoBuild extends PluginBase implements Listener{
                                     $block->y = intval($v3->y);
                                     $block->z = intval($v3->z);
                                     $block->level = $player->level;
+
+                                   /* if($block instanceof Stair){
+                                        $d = [
+                                            360 => 3,
+                                            270 => 2,
+                                            180 => 1,
+                                            90 => 0
+                                        ];
+                                        $faces = [
+                                            0 => 0,
+                                            1 => 2,
+                                            2 => 1,
+                                            3 => 3
+                                        ];
+                                        $facef = array_flip($faces);
+                                        $md = false;
+                                        if($bdm > 3){
+                                            $md = true;
+                                            $bdm -= 4;
+                                        }
+
+                                        $rbdm = $this->getStairRotation($d[$yaw], $facef[$bdm]);
+
+                                        if($md){
+                                            $rbdm += 4;
+                                        }
+
+                                        if($player->getDirection() === 3){
+                                            $rbdm ++;
+                                        }
+
+                                        // $facef[$dm] => 예전
+                                        // $d[$yaw] => 새거
+                                        // 시스템 방향 => $d[$yaw]
+
+                                        $block->setDamage($rbdm);
+                                    }*/
+
                                     $blocks[] = $block;
                                 }
 
@@ -401,6 +535,7 @@ class AutoBuild extends PluginBase implements Listener{
                         $form->setButton2("§l취소");
                         $form->sendForm($player);
                     }
+                    $player->setSneaking(false);
                 });
 
                 $form->setTitle("§l건축하기");
@@ -425,13 +560,15 @@ class AutoBuild extends PluginBase implements Listener{
                 }
 
                 if(isset($this->buildmode[$player->getName()])){
-                    $player->sendPopup("✅ §f작업을 취소했습니다.");
-                    unset($this->buildmode[$player->getName()]);
+                    if(!$player->form){
+                        $player->sendPopup("✅ §f작업을 취소했습니다.");
+                        unset($this->buildmode[$player->getName()]);
 
-                    if(isset($this->oldblock[$player->getName()])){
-                        if($this->oldblock[$player->getName()] !== []){
-                            $player->getLevel()->sendBlocks([$player], $this->oldblock[$player->getName()]);
-                            $this->oldblock[$player->getName()] = [];
+                        if(isset($this->oldblock[$player->getName()])){
+                            if($this->oldblock[$player->getName()] !== []){
+                                $player->getLevel()->sendBlocks([$player], $this->oldblock[$player->getName()]);
+                                $this->oldblock[$player->getName()] = [];
+                            }
                         }
                     }
                 }
